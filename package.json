@@ -1,0 +1,13 @@
+{
+  "name": "watdplayer-auth",
+  "version": "1.0.0",
+  "description": "Patreon OAuth handler for WATDplayer",
+  "main": "api/patreon/callback.js",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "vercel": "^33.0.0"
+  }
+}
