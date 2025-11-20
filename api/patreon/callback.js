@@ -52,6 +52,13 @@ export default async function handler(req, res) {
   const clientSecret = process.env.PATREON_CLIENT_SECRET;
   const redirectUri = process.env.PATREON_REDIRECT_URI;
 
+  console.log('Environment check:', {
+    hasClientId: !!clientId,
+    hasClientSecret: !!clientSecret,
+    hasRedirectUri: !!redirectUri,
+    code: code.substring(0, 10) + '...'
+  });
+
   try {
     // Exchange authorization code for access token
     const tokenResponse = await fetch('https://www.patreon.com/api/oauth2/token', {
@@ -69,14 +76,21 @@ export default async function handler(req, res) {
     });
 
     if (!tokenResponse.ok) {
-      throw new Error('Failed to exchange code for token');
+      const errorText = await tokenResponse.text();
+      console.error('Token exchange failed:', tokenResponse.status, errorText);
+      throw new Error(`Failed to exchange code for token: ${tokenResponse.status}`);
     }
 
     const tokenData = await tokenResponse.json();
     const { access_token, refresh_token } = tokenData;
 
     // Get user's Patreon identity
-    const identityResponse = await fetch('https://www.patreon.com/api/oauth2/v2/identity?include=memberships&fields[user]=email,full_name', {
+    const identityUrl = 'https://www.patreon.com/api/oauth2/v2/identity'
+      + '?include=memberships'
+      + '&fields[user]=email,full_name'
+      + '&fields[member]=patron_status,currently_entitled_amount_cents,will_pay_amount_cents';
+
+    const identityResponse = await fetch(identityUrl, {
       headers: {
         'Authorization': `Bearer ${access_token}`,
       },
@@ -89,9 +103,18 @@ export default async function handler(req, res) {
     const identityData = await identityResponse.json();
     
     // Check if user has active membership
-    const hasMembership = identityData.included?.some(item => 
-      item.type === 'member' && item.attributes?.patron_status === 'active_patron'
-    );
+    const memberships = identityData.included?.filter(item => item.type === 'member') || [];
+    const hasMembership = memberships.some(member => {
+      const status = member.attributes?.patron_status;
+      const entitledAmount = member.attributes?.currently_entitled_amount_cents ?? 0;
+      return status === 'active_patron' || entitledAmount > 0;
+    });
+
+    console.log('Membership check:', memberships.map(member => ({
+      status: member.attributes?.patron_status,
+      entitled: member.attributes?.currently_entitled_amount_cents,
+      willPay: member.attributes?.will_pay_amount_cents,
+    })));
 
     // Redirect back to app with tokens
     const appRedirectUrl = `watdplayer://oauth?` + new URLSearchParams({
