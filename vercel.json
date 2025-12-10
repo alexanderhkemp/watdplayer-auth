@@ -18,6 +18,10 @@
     {
       "src": "/api/notifications/send",
       "dest": "/api/notifications/send.js"
+    },
+    {
+      "src": "/api/notifications/fix-env",
+      "dest": "/api/notifications/fix-env.js"
     }
   ]
 }
