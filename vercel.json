@@ -10,6 +10,14 @@
     {
       "src": "/patreon/callback",
       "dest": "/api/patreon/callback.js"
+    },
+    {
+      "src": "/api/notifications/register",
+      "dest": "/api/notifications/register.js"
+    },
+    {
+      "src": "/api/notifications/send",
+      "dest": "/api/notifications/send.js"
     }
   ]
 }
