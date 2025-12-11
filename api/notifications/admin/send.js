@@ -1,5 +1,5 @@
 import { neon } from '@neondatabase/serverless';
-import { sendPushNotification } from '../../../lib/apns.js';
+import { sendAPNSNotification } from '../../../lib/apns.js';
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
@@ -40,7 +40,7 @@ export default async function handler(req, res) {
     
     for (const { token, environment: tokenEnv } of tokens) {
       try {
-        const result = await sendPushNotification(token, {
+        const result = await sendAPNSNotification(token, {
           title: title || '',
           body,
           sound: 'default'
