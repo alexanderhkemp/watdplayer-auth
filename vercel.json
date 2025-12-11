@@ -26,6 +26,18 @@
     {
       "src": "/api/notifications/debug",
       "dest": "/api/notifications/debug.js"
+    },
+    {
+      "src": "/api/notifications/admin/verify",
+      "dest": "/api/notifications/admin/verify.js"
+    },
+    {
+      "src": "/api/notifications/admin/stats",
+      "dest": "/api/notifications/admin/stats.js"
+    },
+    {
+      "src": "/api/notifications/admin/send",
+      "dest": "/api/notifications/admin/send.js"
     }
   ]
 }
