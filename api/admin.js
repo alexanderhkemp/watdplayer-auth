@@ -1,0 +1,361 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
+export default async function handler(req, res) {
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WATD Push Notifications</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #fff;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 3px;
+            text-align: center;
+            margin-bottom: 40px;
+            color: #888;
+        }
+        
+        .logo {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 24px;
+            font-weight: 200;
+            letter-spacing: 8px;
+        }
+        
+        .form-group {
+            margin-bottom: 24px;
+        }
+        
+        label {
+            display: block;
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: 2px;
+            color: #666;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 14px 16px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 16px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+        
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #555;
+        }
+        
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+        
+        select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+        }
+        
+        button {
+            width: 100%;
+            padding: 16px;
+            background: #fff;
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        
+        button:hover {
+            opacity: 0.9;
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .result {
+            margin-top: 24px;
+            padding: 16px;
+            background: #1a1a1a;
+            border-radius: 8px;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .result.success {
+            border-left: 3px solid #4ade80;
+        }
+        
+        .result.error {
+            border-left: 3px solid #f87171;
+        }
+        
+        .result pre {
+            margin-top: 12px;
+            font-size: 12px;
+            color: #888;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        
+        .stats {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 16px;
+            background: #1a1a1a;
+            border-radius: 8px;
+        }
+        
+        .stats-number {
+            font-size: 32px;
+            font-weight: 200;
+        }
+        
+        .stats-label {
+            font-size: 11px;
+            color: #666;
+            letter-spacing: 2px;
+            margin-top: 4px;
+        }
+        
+        .login-form {
+            display: block;
+        }
+        
+        .admin-form {
+            display: none;
+        }
+        
+        .char-count {
+            font-size: 11px;
+            color: #666;
+            text-align: right;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">WATD</div>
+        <h1>PUSH NOTIFICATIONS</h1>
+        
+        <!-- Login Form -->
+        <div id="loginForm" class="login-form">
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="password" placeholder="Enter admin password">
+            </div>
+            <button onclick="login()">Access</button>
+            <div id="loginResult" class="result"></div>
+        </div>
+        
+        <!-- Admin Form -->
+        <div id="adminForm" class="admin-form">
+            <div class="stats">
+                <div class="stats-number" id="deviceCount">-</div>
+                <div class="stats-label">REGISTERED DEVICES</div>
+            </div>
+            
+            <div class="form-group">
+                <label>Title</label>
+                <input type="text" id="title" placeholder="New Episode Available!" maxlength="50">
+                <div class="char-count"><span id="titleCount">0</span>/50</div>
+            </div>
+            
+            <div class="form-group">
+                <label>Message</label>
+                <textarea id="body" placeholder="Check out the latest episode of Modes of Thought!" maxlength="200"></textarea>
+                <div class="char-count"><span id="bodyCount">0</span>/200</div>
+            </div>
+            
+            <div class="form-group">
+                <label>Environment</label>
+                <select id="environment">
+                    <option value="development">Development (Xcode builds)</option>
+                    <option value="production">Production (TestFlight / App Store)</option>
+                    <option value="all">All Devices</option>
+                </select>
+            </div>
+            
+            <button id="sendBtn" onclick="sendNotification()">Send Notification</button>
+            
+            <div id="result" class="result"></div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = '';
+        let adminPassword = '';
+        
+        // Check if already logged in
+        document.addEventListener('DOMContentLoaded', () => {
+            const saved = sessionStorage.getItem('adminPassword');
+            if (saved) {
+                adminPassword = saved;
+                showAdminForm();
+            }
+            
+            // Character counters
+            document.getElementById('title').addEventListener('input', (e) => {
+                document.getElementById('titleCount').textContent = e.target.value.length;
+            });
+            document.getElementById('body').addEventListener('input', (e) => {
+                document.getElementById('bodyCount').textContent = e.target.value.length;
+            });
+        });
+        
+        async function login() {
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('loginResult');
+            
+            try {
+                const res = await fetch(API_BASE + '/api/notifications/admin/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    adminPassword = password;
+                    sessionStorage.setItem('adminPassword', password);
+                    showAdminForm();
+                } else {
+                    resultDiv.style.display = 'block';
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = 'Invalid password';
+                }
+            } catch (err) {
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = 'Connection error';
+            }
+        }
+        
+        async function showAdminForm() {
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('adminForm').style.display = 'block';
+            
+            // Fetch device count
+            try {
+                const res = await fetch(API_BASE + '/api/notifications/admin/stats', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: adminPassword })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('deviceCount').textContent = data.total || 0;
+                }
+            } catch (err) {
+                console.error('Failed to fetch stats:', err);
+            }
+        }
+        
+        async function sendNotification() {
+            const title = document.getElementById('title').value.trim();
+            const body = document.getElementById('body').value.trim();
+            const environment = document.getElementById('environment').value;
+            const resultDiv = document.getElementById('result');
+            const sendBtn = document.getElementById('sendBtn');
+            
+            if (!body) {
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = 'Message is required';
+                return;
+            }
+            
+            sendBtn.disabled = true;
+            sendBtn.textContent = 'Sending...';
+            
+            try {
+                const res = await fetch(API_BASE + '/api/notifications/admin/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: adminPassword, title, body, environment })
+                });
+                
+                const data = await res.json();
+                
+                resultDiv.style.display = 'block';
+                
+                if (data.success) {
+                    const successCount = data.results?.filter(r => r.status === 200).length || 0;
+                    const failCount = data.results?.filter(r => r.status !== 200).length || 0;
+                    
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = '<strong>✓ Sent successfully</strong><br>' +
+                        successCount + ' delivered, ' + failCount + ' failed' +
+                        '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                    
+                    // Clear form
+                    document.getElementById('title').value = '';
+                    document.getElementById('body').value = '';
+                    document.getElementById('titleCount').textContent = '0';
+                    document.getElementById('bodyCount').textContent = '0';
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = '<strong>Error:</strong> ' + (data.error || 'Unknown error');
+                }
+            } catch (err) {
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = '<strong>Error:</strong> ' + err.message;
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.textContent = 'Send Notification';
+            }
+        }
+        
+        // Enter key to login
+        document.getElementById('password').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') login();
+        });
+    </script>
+</body>
+</html>`;
+
+  res.setHeader('Content-Type', 'text/html');
+  res.status(200).send(html);
+}
